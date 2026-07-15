@@ -50,15 +50,14 @@ jobs:
           path: ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
-      # ЭТОТ ШАГ ДОБАВЛЕН, ЧТОБЫ УБРАТЬ ОШИБКУ С ЛИЦЕНЗИЯМИ И BUILD-TOOLS
-      - name: Fix SDK licenses & install correct build-tools
+      # ШАГ 1: Сначала ставим сами инструменты (cmdline-tools), чтобы sdkmanager точно существовал
+      - name: Install Android SDK tools
         run: |
           export ANDROID_HOME=~/.buildozer/android/platform/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-
           mkdir -p $ANDROID_HOME/cmdline-tools/latest
 
           if [ ! -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            echo "Downloading command line tools..."
             cd $ANDROID_HOME/cmdline-tools
             wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
             unzip -q cmdline-tools.zip
@@ -67,9 +66,19 @@ jobs:
             cd -
           fi
 
-          yes | sdkmanager --licenses
+          # Добавляем sdkmanager в PATH для этого шага
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+
+          echo "Installing SDK components..."
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9245854"
-      # --------------------------------------------------------------------
+
+      # ШАГ 2: Теперь, когда sdkmanager точно есть, спокойно принимаем лицензии
+      - name: Accept Android SDK licenses
+        run: |
+          export ANDROID_HOME=~/.buildozer/android/platform/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          echo "Accepting licenses..."
+          yes | sdkmanager --licenses
 
       - name: Build APK
         run: |
