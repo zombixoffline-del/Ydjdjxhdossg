@@ -50,33 +50,35 @@ jobs:
           path: ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
-      # ШАГ 1: Сначала ставим сами инструменты (cmdline-tools), чтобы sdkmanager точно существовал
-      - name: Install Android SDK tools
+      # ИСПРАВЛЕННЫЙ ШАГ: правильная распаковка + установка
+      - name: Prepare Android SDK (fix cmdline-tools structure)
         run: |
-          export ANDROID_HOME=~/.buildozer/android/platform/android-sdk
-          mkdir -p $ANDROID_HOME/cmdline-tools/latest
+          ANDROID_HOME=~/.buildozer/android/platform/android-sdk
+          CMDLINE_DIR=$ANDROID_HOME/cmdline-tools
+          LATEST_DIR=$CMDLINE_DIR/latest
+          
+          mkdir -p $LATEST_DIR
 
-          if [ ! -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+          # Скачиваем, если sdkmanager ещё нет
+          if [ ! -f "$LATEST_DIR/bin/sdkmanager" ]; then
             echo "Downloading command line tools..."
-            cd $ANDROID_HOME/cmdline-tools
+            cd $CMDLINE_DIR
             wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
             unzip -q cmdline-tools.zip
-            mv cmdline-tools $ANDROID_HOME/cmdline-tools/temp
-            mv $ANDROID_HOME/cmdline-tools/temp $ANDROID_HOME/cmdline-tools/latest
+            
+            # ВАЖНО: архив содержит папку cmdline-tools с подпапкой tools. 
+            # Нам нужно, чтобы в latest лежали bin/ и lib/ напрямую.
+            mv cmdline-tools/* $LATEST_DIR/
+            
             cd -
           fi
 
-          # Добавляем sdkmanager в PATH для этого шага
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          # Добавляем в PATH сразу после проверки
+          export PATH=$LATEST_DIR/bin:$PATH
 
           echo "Installing SDK components..."
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9245854"
 
-      # ШАГ 2: Теперь, когда sdkmanager точно есть, спокойно принимаем лицензии
-      - name: Accept Android SDK licenses
-        run: |
-          export ANDROID_HOME=~/.buildozer/android/platform/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
           echo "Accepting licenses..."
           yes | sdkmanager --licenses
 
