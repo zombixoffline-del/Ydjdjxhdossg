@@ -5,16 +5,16 @@ package.domain = org.mytestgame
 version = 0.3
 
 source.dir = .
-source.include_exts = py
+source.include_exts = py,png
 
 requirements = python3,kivy
 
 orientation = landscape
 
+[android]
 android.api = 34
 android.minapi = 26
 android.archs = arm64-v8a
-
 android.accept_sdk_license = True
 
 [buildozer]
