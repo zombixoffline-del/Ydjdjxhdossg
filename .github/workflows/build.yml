@@ -50,8 +50,8 @@ jobs:
           path: ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
-      # ИСПРАВЛЕННЫЙ ШАГ: правильная распаковка + установка
-      - name: Prepare Android SDK (fix cmdline-tools structure)
+      # ИСПРАВЛЕННЫЙ ШАГ: без жёсткой версии NDK, с запасным вариантом build-tools
+      - name: Prepare Android SDK (stable versions)
         run: |
           ANDROID_HOME=~/.buildozer/android/platform/android-sdk
           CMDLINE_DIR=$ANDROID_HOME/cmdline-tools
@@ -59,25 +59,21 @@ jobs:
           
           mkdir -p $LATEST_DIR
 
-          # Скачиваем, если sdkmanager ещё нет
           if [ ! -f "$LATEST_DIR/bin/sdkmanager" ]; then
             echo "Downloading command line tools..."
             cd $CMDLINE_DIR
             wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
             unzip -q cmdline-tools.zip
-            
-            # ВАЖНО: архив содержит папку cmdline-tools с подпапкой tools. 
-            # Нам нужно, чтобы в latest лежали bin/ и lib/ напрямую.
             mv cmdline-tools/* $LATEST_DIR/
-            
             cd -
           fi
 
-          # Добавляем в PATH сразу после проверки
           export PATH=$LATEST_DIR/bin:$PATH
 
           echo "Installing SDK components..."
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9245854"
+          # ВАЖНО: убрали жёсткий ndk;25.2..., теперь sdkmanager сам подберёт совместимый
+          # Также добавили запасной build-tools;33.0.2, если 34.0.0 вдруг не найдётся
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" || sdkmanager "build-tools;33.0.2"
 
           echo "Accepting licenses..."
           yes | sdkmanager --licenses
